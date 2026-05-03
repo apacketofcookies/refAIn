@@ -748,17 +748,8 @@
 
     <nav class="nav">
       <a href="#" class="active">Paraphraser</a>
-      <a href="#">Grammar</a>
-      <a href="#">Summarizer</a>
-      <a href="#">Plagiarism</a>
-      <a href="#">AI Detector</a>
-      <a href="#">Citation</a>
     </nav>
 
-    <div class="header-actions">
-      <button class="btn-ghost">Log in</button>
-      <button class="btn-primary">Get Started Free</button>
-    </div>
   </header>
 
   <!-- ─── TOOL TABS ─── -->
@@ -766,23 +757,6 @@
     <div class="tool-tab active">
       <span class="tool-tab-icon">⟳</span>
       Paraphraser
-    </div>
-    <div class="tool-tab">
-      <span class="tool-tab-icon">✓</span>
-      Grammar Checker
-    </div>
-    <div class="tool-tab">
-      <span class="tool-tab-icon">◎</span>
-      Summarizer
-      <span class="tool-tab-badge">NEW</span>
-    </div>
-    <div class="tool-tab">
-      <span class="tool-tab-icon">◉</span>
-      AI Detector
-    </div>
-    <div class="tool-tab">
-      <span class="tool-tab-icon">〃</span>
-      Plagiarism Checker
     </div>
   </div>
 
@@ -923,15 +897,7 @@
     <div class="info-bar">
       <div class="info-stat">
         <div class="info-stat-dot"></div>
-        Free · 10,000 words/month
-      </div>
-      <div class="info-stat">
-        <div class="info-stat-dot yellow"></div>
-        5 modes available
-      </div>
-      <div class="info-stat">
-        <div class="info-stat-dot blue"></div>
-        8 modes with Premium
+        Free · 1,000 words/month
       </div>
     </div>
 
@@ -966,7 +932,7 @@
       if (clearBtn && inputEl) {
         clearBtn.addEventListener('click', function () {
           inputEl.value = '';
-          if (countEl) countEl.textContent = '0 / 10,000';
+          if (countEl) countEl.textContent = '0 / 1,000';
         });
       }
 
