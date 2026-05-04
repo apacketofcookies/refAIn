@@ -1,5 +1,5 @@
 <h1> To Run Locally</h1>
-'''bash
+```bash
 npm run install
 npm dev
-'''
+```
