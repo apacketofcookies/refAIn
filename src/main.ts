@@ -1,6 +1,8 @@
 // Main application entry point
 // Paraphrasing Tool - UI Shell
 
+import { initUploadHandler } from './services/uploadHandler';
+
 const modes = [
   { id: 'standard', label: 'Standard', icon: '✦' },
   { id: 'fluency', label: 'Fluency', icon: '◈' },
@@ -70,6 +72,8 @@ function init(): void {
       strengthLabel.textContent = labels[parseInt(slider.value)];
     });
   }
+
+  initUploadHandler();
 }
 
 document.addEventListener('DOMContentLoaded', init);

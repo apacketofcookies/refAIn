@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <style>
     *, *::before, *::after {
       box-sizing: border-box;
@@ -673,6 +674,18 @@
       border-radius: 5px;
     }
 
+    /* FILES TAB --- */
+    .files-tab-container{
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap:0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      min-height: 68px;
+    }
+
     /* ─── INFO BAR ─── */
     .info-bar {
       display: flex;
@@ -708,6 +721,8 @@
       background: var(--accent);
       box-shadow: 0 0 6px var(--accent);
     }
+
+    
 
     /* ─── SCROLLBAR ─── */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -802,13 +817,13 @@
           <span class="editor-pane-title">Input</span>
           <div class="editor-pane-actions">
             <button class="icon-btn" id="clear-btn" title="Clear">
-              ✕
+              <i data-lucide="file-x"></i>
             </button>
             <button class="icon-btn" title="Upload file">
-              ↑
+              <i data-lucide="arrow-up-from-line"></i>
             </button>
             <button class="icon-btn" title="Paste from clipboard">
-              ⎘
+              <i data-lucide="file"></i>
             </button>
           </div>
         </div>
@@ -840,9 +855,15 @@
         <div class="editor-pane-header">
           <span class="editor-pane-title">Output</span>
           <div class="editor-pane-actions">
-            <button class="icon-btn" title="Copy output">⎘</button>
-            <button class="icon-btn" title="Download">↓</button>
-            <button class="icon-btn" title="Synonym highlighter">✦</button>
+            <button class="icon-btn" title="Copy output">
+              <i data-lucide="clipboard"></i>
+            </button>
+            <button class="icon-btn" title="Download">
+              <i data-lucide="file-down"></i>
+            </button>
+            <button class="icon-btn" title="Synonym highlighter">
+              ✦
+            </button>
           </div>
         </div>
         <div class="editor-pane-body">
@@ -861,6 +882,11 @@
           </div>
         </div>
       </div>
+
+    </div>
+
+    <!-- Files Tab-->
+    <div class="files-tab-container">
 
     </div>
 
@@ -923,7 +949,7 @@
         inputEl.addEventListener('input', function () {
           var text = inputEl.value.trim();
           var count = text ? text.split(/\s+/).length : 0;
-          countEl.textContent = count + ' / 10,000';
+          countEl.textContent = count + ' / 1,000';
         });
       }
 
@@ -947,6 +973,9 @@
       }
 
     });
+
+    // Create lucide icons
+    lucide.createIcons();
   </script>
   <script type="module" src="/src/main.ts"></script>
 </body>
