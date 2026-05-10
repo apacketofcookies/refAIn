@@ -819,6 +819,7 @@
             <button class="icon-btn" id="clear-btn" title="Clear">
               <i data-lucide="file-x"></i>
             </button>
+            <input type="file" id="file-upload" accept=".csv,.xlsx" style="display:none;" />
             <button class="icon-btn" title="Upload file">
               <i data-lucide="arrow-up-from-line"></i>
             </button>
@@ -977,6 +978,62 @@
     // Create lucide icons
     lucide.createIcons();
   </script>
+  <script>
+const fileInput = document.getElementById("file-upload");
+
+fileInput.addEventListener("change", async function () {
+    const file = fileInput.files[0];
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch("http://127.0.0.1:8000/analyze/", {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await response.json();
+
+    console.log(data);
+
+    document.querySelector(".output-placeholder").innerHTML =
+        "<pre style='color:#e8ecf4; padding:20px;'>" +
+        JSON.stringify(data, null, 2) +
+        "</pre>";
+});
+</script>
+  <script>
+const API_URL = "http://127.0.0.1:8000/analyze/";
+
+document.querySelector(".btn-paraphrase").addEventListener("click", async () => {
+    const fileInput = document.querySelector("input[type='file']");
+    const text = document.getElementById("input-area").value;
+
+    const formData = new FormData();
+
+    // if file exists
+    if (fileInput && fileInput.files.length > 0) {
+        formData.append("file", fileInput.files[0]);
+    } else {
+        formData.append("text", text);
+    }
+
+    const response = await fetch(API_URL, {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await response.json();
+
+    console.log("Backend result:", data);
+
+    // show output in UI
+    document.querySelector(".output-placeholder").innerHTML =
+        "<pre style='color:#e8ecf4; padding:20px;'>" +
+        JSON.stringify(data, null, 2) +
+        "</pre>";
+});
+</script>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
