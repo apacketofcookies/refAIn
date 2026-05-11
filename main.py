@@ -110,6 +110,8 @@ def is_numeric_expected_column(df: pd.DataFrame, col: str) -> bool:
 
 def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
     original_df = df.copy()
+    original_rows = len(df)
+    original_cols = len(df.columns)
 
     # Ensure empty/whitespace object cells are treated as missing values.
     for col in df.select_dtypes(include=["object"]).columns:
@@ -123,7 +125,8 @@ def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
 
     cleaned = df.copy()
     row_counts = {
-        "original_rows": int(len(cleaned)),
+        "original_rows": int(original_rows),
+        "original_columns": int(original_cols),
         "after_deduplication": 0,
         "after_drop_missing": 0,
         "after_drop_invalid_numeric": 0,
@@ -195,6 +198,10 @@ def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
     cleaned_for_export = cleaned.fillna("")
     cleaned_csv = cleaned_for_export.to_csv(index=False)
 
+    # Calculate improvement metrics
+    total_removed = removed_duplicates + removed_missing_rows + removed_invalid_numeric_rows + removed_noise_rows
+    improvement_pct = round((total_removed / original_rows * 100), 1) if original_rows > 0 else 0
+
     return {
         "missing_values": missing_values,
         "duplicate_rows": duplicate_rows,
@@ -207,12 +214,17 @@ def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
             "missing_required_values": int(removed_missing_rows),
             "invalid_numeric_values": int(removed_invalid_numeric_rows),
             "noise_outliers": int(removed_noise_rows),
+            "total_removed": int(total_removed),
         },
         "row_counts": row_counts,
+        "improvement": {
+            "rows_removed": int(total_removed),
+            "percentage_cleaned": improvement_pct,
+        },
         "cleaned_preview": cleaned_for_export.head(20).to_dict(orient="records"),
         "cleaned_csv": cleaned_csv,
         "fixed_text": cleaned_csv,
-        "message": "Dataset analyzed successfully",
+        "message": f"Dataset cleaned successfully. Removed {total_removed} problematic rows ({improvement_pct}%).",
     }
 
 # ---------------------------
@@ -249,11 +261,36 @@ async def analyze_file(file: UploadFile = File(None), text: str = Form(None)):
             # Try parsing; if default parser fails, try python engine with sep inference
             try:
                 df = pd.read_csv(StringIO(decoded))
-            except Exception:
+            except Exception as e1:
                 try:
                     df = pd.read_csv(StringIO(decoded), sep=None, engine='python')
-                except Exception as e:
-                    return {"error": "Unable to parse CSV file", "details": str(e)}
+                except Exception as e2:
+                    try:
+                        # Try common alternative delimiters
+                        first_line = decoded.split('\n')[0]
+                        if ';' in first_line:
+                            df = pd.read_csv(StringIO(decoded), sep=';')
+                        elif '\t' in first_line:
+                            df = pd.read_csv(StringIO(decoded), sep='\t')
+                        else:
+                            return {"error": "Unable to parse CSV file", "details": str(e1)}
+                    except Exception as e3:
+                        return {"error": "Unable to parse CSV file", "details": str(e3)}
+            
+            # Clean up whitespace and normalize
+            df = df.copy()
+            for col in df.columns:
+                if df[col].dtype == 'object':
+                    df[col] = df[col].str.strip() if hasattr(df[col], 'str') else df[col]
+            
+            # Remove completely empty rows
+            df = df.dropna(how='all')
+            
+            # Remove completely empty columns
+            df = df.dropna(axis=1, how='all')
+            
+            # Normalize column names
+            df.columns = df.columns.str.strip().str.lower().str.replace(r'\s+', '_', regex=True)
         else:
             try:
                 df = pd.read_excel(BytesIO(content))
@@ -279,11 +316,39 @@ async def analyze_file(file: UploadFile = File(None), text: str = Form(None)):
                 "text_size_mb": round(text_size_bytes / 1024 / 1024, 2)
             }
         
-        # When users paste text (CSV content) we return the fixed/cleaned text
+        # Parse CSV with robust error handling
         try:
             df = pd.read_csv(StringIO(text))
-        except Exception:
-            return {"error": "Unable to parse text as CSV"}
+        except Exception as e1:
+            # Try alternate parsing strategies
+            try:
+                df = pd.read_csv(StringIO(text), sep=None, engine='python')
+            except Exception as e2:
+                # Last resort: try semicolon or tab
+                try:
+                    if ';' in text.split('\n')[0]:
+                        df = pd.read_csv(StringIO(text), sep=';')
+                    elif '\t' in text.split('\n')[0]:
+                        df = pd.read_csv(StringIO(text), sep='\t')
+                    else:
+                        return {"error": "Unable to parse CSV. Ensure it's comma, semicolon, or tab-separated.", "details": str(e1)}
+                except Exception as e3:
+                    return {"error": "Unable to parse CSV data", "details": str(e3)}
+        
+        # Clean up whitespace in data
+        df = df.copy()
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                df[col] = df[col].str.strip() if hasattr(df[col], 'str') else df[col]
+        
+        # Remove completely empty rows
+        df = df.dropna(how='all')
+        
+        # Remove completely empty columns
+        df = df.dropna(axis=1, how='all')
+        
+        # Normalize column names: strip whitespace and lowercase for consistency
+        df.columns = df.columns.str.strip().str.lower().str.replace(r'\s+', '_', regex=True)
 
         # Check row count limit
         if len(df) > MAX_ROWS:

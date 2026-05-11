@@ -443,13 +443,10 @@ async function analyzeCSVFile(
     const formData = new FormData();
 
     // -------------------------
-    // SEND ACTUAL FILE
-    // -------------------------
-    if (file) {
-      formData.append('file', file);
-    } else {
-      formData.append('text', rawText);
-    }
+    // Send the decoded CSV text for both uploads and pasted data.
+    // This keeps file uploads on the same analysis path as pasted CSV text.
+    const csvText = rawText || rows.map(row => row.join(',')).join('\n');
+    formData.append('text', csvText);
 
     const response = await fetch(API_URL, {
       method: 'POST',
