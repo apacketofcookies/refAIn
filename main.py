@@ -1,9 +1,19 @@
 from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware  
 import pandas as pd
 import numpy as np
 from io import StringIO
+from io import BytesIO
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://paraphrase-tool.netlify.app"],  
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ---------------------------
 # CLEANING FUNCTIONS
@@ -44,7 +54,7 @@ async def analyze_file(file: UploadFile = File(None), text: str = Form(None)):
         if file.filename.endswith(".csv"):
             df = pd.read_csv(StringIO(content.decode("utf-8")))
         else:
-            df = pd.read_excel(content)
+            df = pd.read_excel(BytesIO(content))
 
     elif text:
         df = pd.read_csv(StringIO(text))
