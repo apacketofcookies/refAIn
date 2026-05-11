@@ -106,7 +106,7 @@ def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
     missing_values = detect_missing(df)
     duplicate_rows = detect_duplicates(df)
     inconsistent_labels = detect_inconsistent_labels(df)
-    noise_detection = detect_noise(df)
+    noise_detection = detect_noise(df) if len(df) < 10000 else {}
 
     cleaned = df.copy()
     row_counts = {
@@ -161,23 +161,22 @@ def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
     row_counts["after_drop_invalid_numeric"] = int(len(cleaned))
 
     # 5) Drop outlier rows (noise) based on z-score > 3 for numeric columns.
-    numeric_cols = [c for c in cleaned.columns if pd.api.types.is_numeric_dtype(cleaned[c])]
-    noise_row_mask = pd.Series(False, index=cleaned.index)
-
-    for col in numeric_cols:
-        valid = cleaned[col].dropna()
-        if valid.empty:
-            continue
-
-        std = valid.std()
-        if std is None or np.isclose(std, 0):
-            continue
-
-        z = (cleaned[col] - valid.mean()) / std
-        noise_row_mask = noise_row_mask | (z.abs() > 3)
-
-    removed_noise_rows = int(noise_row_mask.sum())
-    cleaned = cleaned[~noise_row_mask].copy()
+    # Skip for large datasets to avoid timeout
+    removed_noise_rows = 0
+    if len(cleaned) < 10000:
+        numeric_cols = [c for c in cleaned.columns if pd.api.types.is_numeric_dtype(cleaned[c])]
+        noise_row_mask = pd.Series(False, index=cleaned.index)
+        for col in numeric_cols:
+            valid = cleaned[col].dropna()
+            if valid.empty:
+                continue
+            std = valid.std()
+            if std is None or np.isclose(std, 0):
+                continue
+            z = (cleaned[col] - valid.mean()) / std
+            noise_row_mask = noise_row_mask | (z.abs() > 3)
+        removed_noise_rows = int(noise_row_mask.sum())
+        cleaned = cleaned[~noise_row_mask].copy()
     row_counts["after_drop_noise"] = int(len(cleaned))
 
     row_counts["final_rows"] = int(len(cleaned))

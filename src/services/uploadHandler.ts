@@ -329,6 +329,26 @@ function hideParsingOverlay(): void {
   if (ov) ov.remove();
 }
 
+function showAnalysisOverlay(): void {
+  if (document.getElementById('csv-analysis-overlay')) return;
+  const ov = document.createElement('div');
+  ov.id = 'csv-analysis-overlay';
+  ov.style.position = 'fixed';
+  ov.style.inset = '0';
+  ov.style.display = 'flex';
+  ov.style.alignItems = 'center';
+  ov.style.justifyContent = 'center';
+  ov.style.zIndex = '1001';
+  ov.style.background = 'rgba(0, 0, 0, 0.7)';
+  ov.innerHTML = `<div style="background:#13161e;padding:24px 32px;border-radius:12px;border:1px solid #2a2f3f;color:#e8ecf4;text-align:center;"><div style="font-weight:600;margin-bottom:12px;">Analyzing dataset...</div><div style="font-size:12px;color:#8891a9;">This may take a moment depending on file size.</div></div>`;
+  document.body.appendChild(ov);
+}
+
+function hideAnalysisOverlay(): void {
+  const ov = document.getElementById('csv-analysis-overlay');
+  if (ov) ov.remove();
+}
+
 function renderAnalysisResult(result: unknown): void {
   const outputPlaceholder = document.querySelector('.output-placeholder') as HTMLElement | null;
   if (!outputPlaceholder) return;
@@ -394,6 +414,10 @@ async function analyzeCSVFile(file: File | null, rows: string[][]): Promise<void
     actionBtn.textContent = 'Analyzing...';
   }
 
+  const timeoutMs = 30000;
+  const abortController = new AbortController();
+  const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);
+
   try {
     const formData = new FormData();
 
@@ -407,15 +431,24 @@ async function analyzeCSVFile(file: File | null, rows: string[][]): Promise<void
     const response = await fetch(API_URL, {
       method: 'POST',
       body: formData,
+      signal: abortController.signal,
     });
 
+    clearTimeout(timeoutHandle);
     const data = await response.json();
+    hideAnalysisOverlay();
     renderAnalysisResult(data);
     closeModal();
   } catch (error) {
-    renderAnalysisResult({ error: 'Backend error. Check console.', details: String(error) });
+    clearTimeout(timeoutHandle);
+    hideAnalysisOverlay();
+    const errMsg = error instanceof Error && error.name === 'AbortError' 
+      ? 'Analysis timed out. The file may be too large. Try splitting it into smaller chunks.'
+      : String(error);
+    renderAnalysisResult({ error: 'Analysis failed', details: errMsg });
     console.error('Error analyzing CSV:', error);
   } finally {
+    hideAnalysisOverlay();
     if (actionBtn) {
       actionBtn.disabled = false;
       actionBtn.textContent = 'Analyze CSV';
