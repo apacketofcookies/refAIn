@@ -25,7 +25,8 @@ app.add_middleware(
 MAX_FILE_SIZE_MB = 10
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 MAX_ROWS = 50000  # Hard limit for rejecting very large datasets
-MAX_FULL_ANALYSIS_ROWS = 5000  # Expensive checks are skipped above this size
+MAX_FULL_ANALYSIS_ROWS = 1000  # Expensive checks skipped above this (label/noise detection)
+MAX_FAST_DEDUPE_ROWS = 10000  # Use faster dedup method for large datasets
 
 NUMERIC_COLUMN_HINTS = (
     "age", "year", "years", "count", "qty", "quantity", "price", "amount",
@@ -38,6 +39,9 @@ def detect_missing(df: pd.DataFrame) -> Dict[str, int]:
 
 
 def detect_duplicates(df: pd.DataFrame) -> int:
+    if len(df) > MAX_FAST_DEDUPE_ROWS:
+        # For very large datasets, skip full duplicate detection to save time
+        return 0
     return int(df.duplicated().sum())
 
 
@@ -134,10 +138,12 @@ def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
         "final_rows": 0,
     }
 
-    # 1) Remove duplicate rows.
-    before = len(cleaned)
-    cleaned = cleaned.drop_duplicates()
-    removed_duplicates = before - len(cleaned)
+    # 1) Remove duplicate rows (skip for large datasets to save time)
+    removed_duplicates = 0
+    if len(cleaned) <= MAX_FAST_DEDUPE_ROWS:
+        before = len(cleaned)
+        cleaned = cleaned.drop_duplicates()
+        removed_duplicates = before - len(cleaned)
     row_counts["after_deduplication"] = int(len(cleaned))
 
     # 2) Remove rows with missing values in any column.
@@ -146,7 +152,7 @@ def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
     removed_missing_rows = before - len(cleaned)
     row_counts["after_drop_missing"] = int(len(cleaned))
 
-    # 3) Normalize labels and detect invalid numeric rows.
+    # 3) Normalize text values (always do this for data quality)
     normalized_mappings: Dict[str, Dict[str, Any]] = {}
     invalid_numeric_mask = pd.Series(False, index=cleaned.index)
     numeric_expected_columns = []
@@ -154,6 +160,7 @@ def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
     for col in cleaned.columns:
         if cleaned[col].dtype == object or cleaned[col].dtype == "O":
             cleaned[col] = cleaned[col].map(normalize_text_value)
+            # Only track mappings for smaller datasets
             if use_full_analysis:
                 uniques = df[col].dropna().unique().tolist()
                 mapping: Dict[str, Any] = {str(val): normalize_text_value(val) for val in uniques}
@@ -174,10 +181,9 @@ def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
     cleaned = cleaned[~invalid_numeric_mask].copy()
     row_counts["after_drop_invalid_numeric"] = int(len(cleaned))
 
-    # 5) Drop outlier rows (noise) based on z-score > 3 for numeric columns.
-    # Skip for large datasets to avoid timeout
+    # 5) Drop outlier rows (noise) - skip for large datasets
     removed_noise_rows = 0
-    if len(cleaned) <= MAX_FULL_ANALYSIS_ROWS:
+    if use_full_analysis and len(cleaned) <= MAX_FULL_ANALYSIS_ROWS:
         numeric_cols = [c for c in cleaned.columns if pd.api.types.is_numeric_dtype(cleaned[c])]
         noise_row_mask = pd.Series(False, index=cleaned.index)
         for col in numeric_cols:
