@@ -228,9 +228,33 @@ async def analyze_file(file: UploadFile = File(None), text: str = Form(None)):
             }
 
         if file.filename.endswith(".csv"):
-            df = pd.read_csv(StringIO(content.decode("utf-8")))
+            # Try decoding with utf-8 first, then latin-1 if needed
+            decoded = None
+            try:
+                decoded = content.decode('utf-8')
+            except UnicodeDecodeError:
+                try:
+                    decoded = content.decode('latin-1')
+                except Exception:
+                    return {"error": "Unable to decode CSV file (unsupported encoding)"}
+
+            # Strip BOM if present
+            if decoded and decoded.startswith('\ufeff'):
+                decoded = decoded.lstrip('\ufeff')
+
+            # Try parsing; if default parser fails, try python engine with sep inference
+            try:
+                df = pd.read_csv(StringIO(decoded))
+            except Exception:
+                try:
+                    df = pd.read_csv(StringIO(decoded), sep=None, engine='python')
+                except Exception as e:
+                    return {"error": "Unable to parse CSV file", "details": str(e)}
         else:
-            df = pd.read_excel(BytesIO(content))
+            try:
+                df = pd.read_excel(BytesIO(content))
+            except Exception as e:
+                return {"error": "Unable to parse Excel file", "details": str(e)}
 
         # Check row count limit
         if len(df) > MAX_ROWS:

@@ -384,6 +384,13 @@ function renderAnalysisResult(result: unknown): void {
   }
 
   if (cleanedText) {
+    try {
+      (window as any).lastCleanedCsv = cleanedText;
+      const evt = new CustomEvent('cleanedCsvReady', { detail: { size: cleanedText.length } });
+      window.dispatchEvent(evt);
+    } catch (e) {
+      // ignore if environment doesn't allow writing to window
+    }
     actions.appendChild(
       makeActionButton('Copy cleaned text', () => {
         void navigator.clipboard.writeText(cleanedText);
@@ -416,7 +423,7 @@ async function analyzeCSVFile(file: File | null, rows: string[][]): Promise<void
     actionBtn.textContent = 'Analyzing...';
   }
 
-  const timeoutMs = 30000;
+  const timeoutMs = 90000; // increased to 90s to allow longer analyses
   const abortController = new AbortController();
   const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);
 
@@ -437,6 +444,19 @@ async function analyzeCSVFile(file: File | null, rows: string[][]): Promise<void
     });
 
     clearTimeout(timeoutHandle);
+    // If server returned an error status, try to show its JSON payload
+    if (!response.ok) {
+      let errPayload: any = { error: 'Server error', details: response.statusText };
+      try {
+        errPayload = await response.json();
+      } catch (e) {
+        // fallthrough
+      }
+      hideAnalysisOverlay();
+      renderAnalysisResult(errPayload);
+      return;
+    }
+
     const data = await response.json();
     hideAnalysisOverlay();
     renderAnalysisResult(data);
