@@ -209,9 +209,10 @@ def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
             "noise_outliers": int(removed_noise_rows),
         },
         "row_counts": row_counts,
-        "cleaned_preview": cleaned_for_export.head(10).to_dict(orient="records"),
+        "cleaned_preview": cleaned_for_export.head(20).to_dict(orient="records"),
         "cleaned_csv": cleaned_csv,
         "fixed_text": cleaned_csv,
+        "message": "Dataset analyzed successfully",
     }
 
 # ---------------------------
