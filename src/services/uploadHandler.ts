@@ -359,16 +359,106 @@ function renderAnalysisResult(result: unknown): void {
   outputPlaceholder.style.pointerEvents = 'auto';
 
   const res: any = result as any;
+
+  // Check if this is an error response
+  if (res && res.error) {
+    // Render error message nicely
+    const errorContainer = document.createElement('div');
+    errorContainer.style.padding = '20px';
+    errorContainer.style.background = '#2a1f2e';
+    errorContainer.style.borderLeft = '4px solid #ff6b6b';
+    errorContainer.style.borderRadius = '4px';
+    errorContainer.style.color = '#e8ecf4';
+
+    const errorTitle = document.createElement('div');
+    errorTitle.style.fontSize = '14px';
+    errorTitle.style.fontWeight = '600';
+    errorTitle.style.color = '#ff6b6b';
+    errorTitle.style.marginBottom = '8px';
+    errorTitle.textContent = `❌ ${res.error}`;
+    errorContainer.appendChild(errorTitle);
+
+    if (res.details) {
+      const errorDetails = document.createElement('div');
+      errorDetails.style.fontSize = '12px';
+      errorDetails.style.color = '#8891a9';
+      errorDetails.style.lineHeight = '1.6';
+      errorDetails.textContent = res.details;
+      errorContainer.appendChild(errorDetails);
+    }
+
+    if (res.rows || res.text_size_mb) {
+      const errorMeta = document.createElement('div');
+      errorMeta.style.fontSize = '11px';
+      errorMeta.style.color = '#6c8aff';
+      errorMeta.style.marginTop = '12px';
+      errorMeta.style.fontFamily = 'monospace';
+      if (res.rows) {
+        errorMeta.textContent += `Rows: ${res.rows.toLocaleString()} | Limit: ${50000}`;
+      }
+      if (res.text_size_mb) {
+        errorMeta.textContent += ` | Size: ${res.text_size_mb}MB | Limit: 10MB`;
+      }
+      errorContainer.appendChild(errorMeta);
+    }
+
+    outputPlaceholder.appendChild(errorContainer);
+    return;
+  }
+
   const cleanedText = (res && (res.fixed_text || res.cleaned_csv)) ? String(res.fixed_text || res.cleaned_csv) : '';
 
-  const pre = document.createElement('pre');
-  pre.style.color = '#e8ecf4';
-  pre.style.padding = '20px';
-  pre.style.margin = '0';
-  pre.style.whiteSpace = 'pre-wrap';
-  pre.style.wordBreak = 'break-word';
-  pre.textContent = cleanedText || JSON.stringify(result, null, 2);
-  outputPlaceholder.appendChild(pre);
+  if (cleanedText) {
+    const pre = document.createElement('pre');
+    pre.style.color = '#e8ecf4';
+    pre.style.padding = '20px';
+    pre.style.margin = '0';
+    pre.style.whiteSpace = 'pre-wrap';
+    pre.style.wordBreak = 'break-word';
+    pre.style.maxHeight = '400px';
+    pre.style.overflow = 'auto';
+    pre.style.fontSize = '11px';
+    pre.style.fontFamily = 'monospace';
+    pre.textContent = cleanedText;
+    outputPlaceholder.appendChild(pre);
+
+    // Show improvement stats if available
+    if (res.message || res.improvement_percentage !== undefined) {
+      const statsDiv = document.createElement('div');
+      statsDiv.style.padding = '12px 20px';
+      statsDiv.style.background = '#1a1e28';
+      statsDiv.style.borderTop = '1px solid #2a2f3f';
+      statsDiv.style.fontSize = '12px';
+      statsDiv.style.color = '#8891a9';
+
+      if (res.message) {
+        const msg = document.createElement('div');
+        msg.style.color = '#6c8aff';
+        msg.style.marginBottom = '8px';
+        msg.textContent = `✓ ${res.message}`;
+        statsDiv.appendChild(msg);
+      }
+
+      if (res.improvement_percentage !== undefined) {
+        const stats = document.createElement('div');
+        stats.style.fontSize = '11px';
+        stats.textContent = `Cleaned: ${res.removed_rows} rows removed (${res.improvement_percentage}%)`;
+        statsDiv.appendChild(stats);
+      }
+
+      outputPlaceholder.appendChild(statsDiv);
+    }
+  } else {
+    // Fallback for unexpected response format
+    const pre = document.createElement('pre');
+    pre.style.color = '#e8ecf4';
+    pre.style.padding = '20px';
+    pre.style.margin = '0';
+    pre.style.whiteSpace = 'pre-wrap';
+    pre.style.wordBreak = 'break-word';
+    pre.textContent = JSON.stringify(result, null, 2);
+    outputPlaceholder.appendChild(pre);
+  }
 
   const actions = document.createElement('div');
   actions.style.display = 'flex';
