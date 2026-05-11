@@ -61,12 +61,42 @@ async def analyze_file(file: UploadFile = File(None), text: str = Form(None)):
         else:
             df = pd.read_excel(BytesIO(content))
 
+        # Prepare normalized mappings and cleaned data
+        original_values = {}
+        normalized_mappings = {}
+
+        cleaned = df.drop_duplicates().copy()
+
+        for col in cleaned.columns:
+            if cleaned[col].dtype == object or cleaned[col].dtype == 'O':
+                # capture original unique values
+                uniques = cleaned[col].dropna().unique().tolist()
+                original_values[col] = uniques
+
+                # simple normalization: strip and lower-case
+                mapping = {}
+                for val in uniques:
+                    try:
+                        norm = str(val).strip().lower()
+                    except Exception:
+                        norm = val
+                    mapping[val] = norm
+
+                # apply mapping
+                cleaned[col] = cleaned[col].astype(str).map(lambda v: mapping.get(v, v)).replace('nan', '')
+                normalized_mappings[col] = mapping
+
+        # Fill numeric NaNs with empty string for portability when returning CSV
+        cleaned = cleaned.fillna("")
+
         result = {
             "missing_values": detect_missing(df),
             "duplicate_rows": detect_duplicates(df),
             "inconsistent_labels": detect_inconsistent_labels(df),
             "noise_detection": detect_noise(df),
-            "cleaned_preview": df.drop_duplicates().fillna("NULL").head(10).to_dict()
+            "normalized_mappings": normalized_mappings,
+            "cleaned_preview": cleaned.head(10).to_dict(),
+            "cleaned_csv": cleaned.to_csv(index=False)
         }
 
         return result
@@ -78,10 +108,34 @@ async def analyze_file(file: UploadFile = File(None), text: str = Form(None)):
         except Exception:
             return {"error": "Unable to parse text as CSV"}
 
-        cleaned = df.drop_duplicates().fillna("")
-        # Return cleaned CSV as text so frontend can replace the input
+        # Compute detections
+        missing = detect_missing(df)
+        duplicates = detect_duplicates(df)
+        inconsistent = detect_inconsistent_labels(df)
+        noise = detect_noise(df)
+
+        # Clean and normalize similar to file path
+        cleaned = df.drop_duplicates().copy()
+        normalized_mappings = {}
+
+        for col in cleaned.columns:
+            if cleaned[col].dtype == object or cleaned[col].dtype == 'O':
+                uniques = cleaned[col].dropna().unique().tolist()
+                mapping = {val: str(val).strip().lower() for val in uniques}
+                cleaned[col] = cleaned[col].astype(str).map(lambda v: mapping.get(v, v)).replace('nan', '')
+                normalized_mappings[col] = mapping
+
+        cleaned = cleaned.fillna("")
         fixed_text = cleaned.to_csv(index=False)
-        return {"fixed_text": fixed_text}
+
+        return {
+            "missing_values": missing,
+            "duplicate_rows": duplicates,
+            "inconsistent_labels": inconsistent,
+            "noise_detection": noise,
+            "normalized_mappings": normalized_mappings,
+            "fixed_text": fixed_text
+        }
 
     else:
         return {"error": "No input provided"}

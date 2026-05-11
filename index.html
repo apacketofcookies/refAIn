@@ -982,36 +982,90 @@
 const API_URL = "https://refain-ai-dataset-cleaner.onrender.com/analyze/";
 
 document.querySelector(".btn-paraphrase").addEventListener("click", async () => {
-    const fileInput = document.querySelector("input[type='file']");
-    const text = document.getElementById("input-area").value;
+  const fileInput = document.querySelector("input[type='file']");
+  const inputArea = document.getElementById("input-area");
+  const text = inputArea ? inputArea.value : '';
 
-    const formData = new FormData();
+  const formData = new FormData();
 
-    if (fileInput && fileInput.files.length > 0) {
-        formData.append("file", fileInput.files[0]);
-    } else {
-        formData.append("text", text);
+  if (fileInput && fileInput.files.length > 0) {
+    formData.append("file", fileInput.files[0]);
+  } else {
+    formData.append("text", text);
+  }
+
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await response.json();
+    console.log("Backend result:", data);
+
+    const out = document.querySelector('.output-placeholder');
+    if (!out) return;
+    out.innerHTML = '';
+
+    const pre = document.createElement('pre');
+    pre.style.color = '#e8ecf4';
+    pre.style.padding = '20px';
+    pre.style.margin = '0';
+    pre.style.whiteSpace = 'pre-wrap';
+    pre.style.wordBreak = 'break-word';
+    pre.textContent = JSON.stringify(data, null, 2);
+    out.appendChild(pre);
+
+    // If backend returned fixed_text, replace textarea and provide download
+    if (data && data.fixed_text) {
+      if (inputArea) {
+        inputArea.value = data.fixed_text;
+        inputArea.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+
+      const dl = document.createElement('button');
+      dl.className = 'btn-paraphrase';
+      dl.style.marginTop = '8px';
+      dl.textContent = 'Download cleaned CSV';
+      dl.addEventListener('click', () => {
+        const blob = new Blob([data.fixed_text], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'cleaned.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
+      out.appendChild(dl);
     }
 
-    try {
-        const response = await fetch(API_URL, {
-            method: "POST",
-            body: formData
-        });
-
-        const data = await response.json();
-        console.log("Backend result:", data);
-
-        document.querySelector(".output-placeholder").innerHTML =
-            "<pre style='color:#e8ecf4; padding:20px;'>" +
-            JSON.stringify(data, null, 2) +
-            "</pre>";
-
-    } catch (err) {
-        console.error("Error:", err);
-        document.querySelector(".output-placeholder").innerHTML =
-            "<p style='color:red;'>Backend error. Check console.</p>";
+    // If backend returned cleaned_csv for files, provide download
+    if (data && data.cleaned_csv) {
+      const dl2 = document.createElement('button');
+      dl2.className = 'btn-paraphrase';
+      dl2.style.marginTop = '8px';
+      dl2.textContent = 'Download cleaned CSV';
+      dl2.addEventListener('click', () => {
+        const blob = new Blob([data.cleaned_csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'cleaned.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
+      out.appendChild(dl2);
     }
+
+  } catch (err) {
+    console.error("Error:", err);
+    document.querySelector(".output-placeholder").innerHTML =
+      "<p style='color:red;'>Backend error. Check console.</p>";
+  }
 });
 </script>
   <script type="module" src="/src/main.ts"></script>
