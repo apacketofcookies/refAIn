@@ -415,7 +415,7 @@ function renderAnalysisResult(result: unknown): void {
   if (actions.children.length) outputPlaceholder.appendChild(actions);
 }
 
-async function analyzeCSVFile(file: File | null, rows: string[][]): Promise<void> {
+async function analyzeCSVFile(file: File | null, rows: string[][], rawText: string = ''): Promise<void> {
   const actionBtn = document.getElementById('csv-modal-action') as HTMLButtonElement | null;
 
   if (actionBtn) {
@@ -430,12 +430,8 @@ async function analyzeCSVFile(file: File | null, rows: string[][]): Promise<void
   try {
     const formData = new FormData();
 
-    if (file) {
-      formData.append('file', file);
-    } else {
-      const csvText = rows.map(row => row.join(',')).join('\n');
-      formData.append('text', csvText);
-    }
+    const csvText = rawText || rows.map(row => row.join(',')).join('\n');
+    formData.append('text', csvText);
 
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -478,7 +474,7 @@ async function analyzeCSVFile(file: File | null, rows: string[][]): Promise<void
   }
 }
 
-function showCSVModal(rows: string[][], filename: string, totalRows?: number, file: File | null = null): void {
+function showCSVModal(rows: string[][], filename: string, totalRows?: number, file: File | null = null, rawText: string = ''): void {
   injectStyles();
 
   const existing = document.getElementById('csv-modal-overlay');
@@ -500,7 +496,7 @@ function showCSVModal(rows: string[][], filename: string, totalRows?: number, fi
   document.getElementById('csv-modal-close')?.addEventListener('click', closeModal);
   document.getElementById('csv-modal-cancel')?.addEventListener('click', closeModal);
   document.getElementById('csv-modal-action')?.addEventListener('click', () => {
-    void analyzeCSVFile(file, rows);
+    void analyzeCSVFile(file, rows, rawText);
   });
   modal.addEventListener('click', (e) => {
     if (e.target === modal) closeModal();
@@ -562,7 +558,7 @@ export function initUploadHandler(): void {
           return;
         }
 
-        showCSVModal(rows, file.name, totalRows, file);
+        showCSVModal(rows, file.name, totalRows, file, text);
       }, 16);
     };
     reader.readAsText(file);
