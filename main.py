@@ -113,124 +113,61 @@ def is_numeric_expected_column(df: pd.DataFrame, col: str) -> bool:
 
 
 def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
-    original_df = df.copy()
+    """Fast analysis: clean data only, skip expensive detection."""
     original_rows = len(df)
     original_cols = len(df.columns)
 
-    # Ensure empty/whitespace object cells are treated as missing values.
-    for col in df.select_dtypes(include=["object"]).columns:
-        df[col] = df[col].replace(r"^\s*$", np.nan, regex=True)
-
-    missing_values = detect_missing(df)
-    duplicate_rows = detect_duplicates(df)
-    use_full_analysis = len(df) <= MAX_FULL_ANALYSIS_ROWS
-    inconsistent_labels = detect_inconsistent_labels(df) if use_full_analysis else {}
-    noise_detection = detect_noise(df) if use_full_analysis else {}
-
+    # Fast cleaning: minimal operations
     cleaned = df.copy()
+    
+    # 1) Remove completely empty rows
+    cleaned = cleaned.dropna(how='all')
+    
+    # 2) Remove rows with ANY missing values
+    before_missing = len(cleaned)
+    cleaned = cleaned.dropna(how='any')
+    removed_missing = before_missing - len(cleaned)
+    
+    # 3) Remove duplicates (only if dataset is small enough)
+    removed_duplicates = 0
+    if len(cleaned) <= 5000:
+        before_dupes = len(cleaned)
+        cleaned = cleaned.drop_duplicates()
+        removed_duplicates = before_dupes - len(cleaned)
+    
+    # 4) Normalize text whitespace in object columns
+    for col in cleaned.columns:
+        if cleaned[col].dtype == 'object':
+            cleaned[col] = cleaned[col].str.strip() if hasattr(cleaned[col], 'str') else cleaned[col]
+    
+    # 5) Normalize numeric columns (no validation, just convert)
+    for col in cleaned.columns:
+        if any(hint in col.lower() for hint in NUMERIC_COLUMN_HINTS):
+            cleaned[col] = pd.to_numeric(cleaned[col], errors='coerce')
+    
     row_counts = {
         "original_rows": int(original_rows),
         "original_columns": int(original_cols),
-        "after_deduplication": 0,
-        "after_drop_missing": 0,
-        "after_drop_invalid_numeric": 0,
-        "after_drop_noise": 0,
-        "final_rows": 0,
+        "after_missing_removal": int(len(cleaned)),
+        "duplicates_removed": int(removed_duplicates),
+        "final_rows": int(len(cleaned)),
     }
-
-    # 1) Remove duplicate rows (skip for large datasets to save time)
-    removed_duplicates = 0
-    if len(cleaned) <= MAX_FAST_DEDUPE_ROWS:
-        before = len(cleaned)
-        cleaned = cleaned.drop_duplicates()
-        removed_duplicates = before - len(cleaned)
-    row_counts["after_deduplication"] = int(len(cleaned))
-
-    # 2) Remove rows with missing values in any column.
-    before = len(cleaned)
-    cleaned = cleaned.dropna(how="any")
-    removed_missing_rows = before - len(cleaned)
-    row_counts["after_drop_missing"] = int(len(cleaned))
-
-    # 3) Normalize text values (always do this for data quality)
-    normalized_mappings: Dict[str, Dict[str, Any]] = {}
-    invalid_numeric_mask = pd.Series(False, index=cleaned.index)
-    numeric_expected_columns = []
-
-    for col in cleaned.columns:
-        if cleaned[col].dtype == object or cleaned[col].dtype == "O":
-            cleaned[col] = cleaned[col].map(normalize_text_value)
-            # Only track mappings for smaller datasets
-            if use_full_analysis:
-                uniques = df[col].dropna().unique().tolist()
-                mapping: Dict[str, Any] = {str(val): normalize_text_value(val) for val in uniques}
-                changed = {k: v for k, v in mapping.items() if str(k) != str(v)}
-                if changed:
-                    normalized_mappings[col] = changed
-
-        if is_numeric_expected_column(original_df, col):
-            numeric_expected_columns.append(col)
-            raw_col = cleaned[col].astype(str).str.strip()
-            coerced = pd.to_numeric(raw_col, errors="coerce")
-            invalid_here = raw_col.ne("") & coerced.isna()
-            invalid_numeric_mask = invalid_numeric_mask | invalid_here
-            cleaned[col] = coerced
-
-    # 4) Drop rows with invalid numeric values in numeric-expected columns.
-    removed_invalid_numeric_rows = int(invalid_numeric_mask.sum())
-    cleaned = cleaned[~invalid_numeric_mask].copy()
-    row_counts["after_drop_invalid_numeric"] = int(len(cleaned))
-
-    # 5) Drop outlier rows (noise) - skip for large datasets
-    removed_noise_rows = 0
-    if use_full_analysis and len(cleaned) <= MAX_FULL_ANALYSIS_ROWS:
-        numeric_cols = [c for c in cleaned.columns if pd.api.types.is_numeric_dtype(cleaned[c])]
-        noise_row_mask = pd.Series(False, index=cleaned.index)
-        for col in numeric_cols:
-            valid = cleaned[col].dropna()
-            if valid.empty:
-                continue
-            std = valid.std()
-            if std is None or np.isclose(std, 0):
-                continue
-            z = (cleaned[col] - valid.mean()) / std
-            noise_row_mask = noise_row_mask | (z.abs() > 3)
-        removed_noise_rows = int(noise_row_mask.sum())
-        cleaned = cleaned[~noise_row_mask].copy()
-    row_counts["after_drop_noise"] = int(len(cleaned))
-
-    row_counts["final_rows"] = int(len(cleaned))
-
+    
+    # Export cleaned data
     cleaned_for_export = cleaned.fillna("")
     cleaned_csv = cleaned_for_export.to_csv(index=False)
-
-    # Calculate improvement metrics
-    total_removed = removed_duplicates + removed_missing_rows + removed_invalid_numeric_rows + removed_noise_rows
+    
+    total_removed = removed_missing + removed_duplicates
     improvement_pct = round((total_removed / original_rows * 100), 1) if original_rows > 0 else 0
-
+    
     return {
-        "missing_values": missing_values,
-        "duplicate_rows": duplicate_rows,
-        "inconsistent_labels": inconsistent_labels,
-        "noise_detection": noise_detection,
-        "normalized_mappings": normalized_mappings,
-        "numeric_expected_columns": numeric_expected_columns,
-        "removed_rows": {
-            "duplicates": int(removed_duplicates),
-            "missing_required_values": int(removed_missing_rows),
-            "invalid_numeric_values": int(removed_invalid_numeric_rows),
-            "noise_outliers": int(removed_noise_rows),
-            "total_removed": int(total_removed),
-        },
+        "message": "Dataset cleaned successfully",
+        "removed_rows": int(total_removed),
+        "improvement_percentage": improvement_pct,
         "row_counts": row_counts,
-        "improvement": {
-            "rows_removed": int(total_removed),
-            "percentage_cleaned": improvement_pct,
-        },
-        "cleaned_preview": cleaned_for_export.head(20).to_dict(orient="records"),
+        "cleaned_preview": cleaned_for_export.head(10).to_dict(orient="records"),
         "cleaned_csv": cleaned_csv,
         "fixed_text": cleaned_csv,
-        "message": f"Dataset cleaned successfully. Removed {total_removed} problematic rows ({improvement_pct}%).",
     }
 
 # ---------------------------
