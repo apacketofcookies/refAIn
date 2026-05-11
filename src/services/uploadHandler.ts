@@ -1,7 +1,7 @@
 // uploadHandler.ts
 // Handles CSV file upload, modal preview, and CSV analysis
 
-const API_URL = 'https://refain.onrender.com/analyze/';
+const API_URL = 'https://refain-ai-dataset-cleaner.onrender.com/analyze/';
 const PREVIEW_LIMIT = 100; // maximum rows to render in the preview to avoid slow DOM rendering
 const MAX_FILE_SIZE_MB = 10; // maximum file size in MB
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -415,7 +415,12 @@ function renderAnalysisResult(result: unknown): void {
   if (actions.children.length) outputPlaceholder.appendChild(actions);
 }
 
-async function analyzeCSVFile(file: File | null, rows: string[][], rawText: string = ''): Promise<void> {
+async function analyzeCSVFile(
+  file: File | null,
+  rows: string[][],
+  rawText: string = ''
+): Promise<void> {
+
   const actionBtn = document.getElementById('csv-modal-action') as HTMLButtonElement | null;
 
   if (actionBtn) {
@@ -423,15 +428,28 @@ async function analyzeCSVFile(file: File | null, rows: string[][], rawText: stri
     actionBtn.textContent = 'Analyzing...';
   }
 
-  const timeoutMs = 90000; // increased to 90s to allow longer analyses
+  showAnalysisOverlay();
+
+  const timeoutMs = 90000;
+
   const abortController = new AbortController();
-  const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);
+
+  const timeoutHandle = setTimeout(() => {
+    abortController.abort();
+  }, timeoutMs);
 
   try {
+
     const formData = new FormData();
 
-    const csvText = rawText || rows.map(row => row.join(',')).join('\n');
-    formData.append('text', csvText);
+    // -------------------------
+    // SEND ACTUAL FILE
+    // -------------------------
+    if (file) {
+      formData.append('file', file);
+    } else {
+      formData.append('text', rawText);
+    }
 
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -440,33 +458,55 @@ async function analyzeCSVFile(file: File | null, rows: string[][], rawText: stri
     });
 
     clearTimeout(timeoutHandle);
-    // If server returned an error status, try to show its JSON payload
+
     if (!response.ok) {
-      let errPayload: any = { error: 'Server error', details: response.statusText };
+
+      let errPayload: any = {
+        error: 'Server error',
+        details: response.statusText
+      };
+
       try {
         errPayload = await response.json();
-      } catch (e) {
-        // fallthrough
-      }
+      } catch {}
+
       hideAnalysisOverlay();
+
       renderAnalysisResult(errPayload);
+
       return;
     }
 
     const data = await response.json();
+
+    console.log("BACKEND RESPONSE:", data);
+
     hideAnalysisOverlay();
+
     renderAnalysisResult(data);
+
     closeModal();
+
   } catch (error) {
+
     clearTimeout(timeoutHandle);
+
     hideAnalysisOverlay();
-    const errMsg = error instanceof Error && error.name === 'AbortError' 
-      ? 'Analysis timed out. The file may be too large. Try splitting it into smaller chunks.'
-      : String(error);
-    renderAnalysisResult({ error: 'Analysis failed', details: errMsg });
-    console.error('Error analyzing CSV:', error);
+
+    const errMsg =
+      error instanceof Error && error.name === 'AbortError'
+        ? 'Analysis timed out.'
+        : String(error);
+
+    renderAnalysisResult({
+      error: 'Analysis failed',
+      details: errMsg
+    });
+
+    console.error(error);
+
   } finally {
-    hideAnalysisOverlay();
+
     if (actionBtn) {
       actionBtn.disabled = false;
       actionBtn.textContent = 'Analyze CSV';
