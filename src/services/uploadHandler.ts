@@ -1,5 +1,7 @@
 // uploadHandler.ts
-// Handles CSV file upload and modal preview
+// Handles CSV file upload, modal preview, and CSV analysis
+
+const API_URL = 'https://refain.onrender.com/analyze/';
 
 function parseCSV(text: string): string[][] {
   return text
@@ -65,7 +67,10 @@ function createModal(rows: string[][]): HTMLElement {
 
       <div class="csv-modal-footer">
         <span class="csv-filename" id="csv-filename"></span>
-        <button class="csv-modal-cancel" id="csv-modal-cancel">Close</button>
+        <div class="csv-modal-footer-actions">
+          <button class="csv-modal-cancel" id="csv-modal-cancel">Close</button>
+          <button class="csv-modal-action" id="csv-modal-action">Analyze CSV</button>
+        </div>
       </div>
 
     </div>
@@ -242,6 +247,12 @@ function injectStyles(): void {
       font-family: 'DM Mono', monospace;
     }
 
+    .csv-modal-footer-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
     .csv-modal-cancel {
       background: transparent;
       border: 1px solid #2a2f3f;
@@ -259,6 +270,31 @@ function injectStyles(): void {
       border-color: #343a50;
       color: #e8ecf4;
     }
+
+    .csv-modal-action {
+      background: linear-gradient(135deg, #6c8aff, #a78bfa);
+      border: none;
+      color: #fff;
+      font-family: 'Sora', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      box-shadow: 0 4px 18px rgba(108, 138, 255, 0.28);
+    }
+
+    .csv-modal-action:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(108, 138, 255, 0.38);
+    }
+
+    .csv-modal-action:disabled {
+      opacity: 0.7;
+      cursor: wait;
+      transform: none;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -268,7 +304,53 @@ function closeModal(): void {
   if (overlay) overlay.remove();
 }
 
-function showCSVModal(rows: string[][], filename: string): void {
+function renderAnalysisResult(result: unknown): void {
+  const outputPlaceholder = document.querySelector('.output-placeholder');
+  if (!outputPlaceholder) return;
+
+  outputPlaceholder.innerHTML = `
+    <pre style="color:#e8ecf4; padding:20px; margin:0; white-space:pre-wrap; word-break:break-word;">${JSON.stringify(result, null, 2)}</pre>
+  `;
+}
+
+async function analyzeCSVFile(file: File | null, rows: string[][]): Promise<void> {
+  const actionBtn = document.getElementById('csv-modal-action') as HTMLButtonElement | null;
+
+  if (actionBtn) {
+    actionBtn.disabled = true;
+    actionBtn.textContent = 'Analyzing...';
+  }
+
+  try {
+    const formData = new FormData();
+
+    if (file) {
+      formData.append('file', file);
+    } else {
+      const csvText = rows.map(row => row.join(',')).join('\n');
+      formData.append('text', csvText);
+    }
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await response.json();
+    renderAnalysisResult(data);
+    closeModal();
+  } catch (error) {
+    renderAnalysisResult({ error: 'Backend error. Check console.', details: String(error) });
+    console.error('Error analyzing CSV:', error);
+  } finally {
+    if (actionBtn) {
+      actionBtn.disabled = false;
+      actionBtn.textContent = 'Analyze CSV';
+    }
+  }
+}
+
+function showCSVModal(rows: string[][], filename: string, file: File | null): void {
   injectStyles();
 
   const existing = document.getElementById('csv-modal-overlay');
@@ -289,6 +371,9 @@ function showCSVModal(rows: string[][], filename: string): void {
   // Close handlers
   document.getElementById('csv-modal-close')?.addEventListener('click', closeModal);
   document.getElementById('csv-modal-cancel')?.addEventListener('click', closeModal);
+  document.getElementById('csv-modal-action')?.addEventListener('click', () => {
+    void analyzeCSVFile(file, rows);
+  });
   modal.addEventListener('click', (e) => {
     if (e.target === modal) closeModal();
   });
@@ -335,7 +420,7 @@ export function initUploadHandler(): void {
         return;
       }
 
-      showCSVModal(rows, file.name);
+      showCSVModal(rows, file.name, file);
     };
     reader.readAsText(file);
 
