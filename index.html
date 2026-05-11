@@ -980,7 +980,9 @@
   </script>
   <script>
 const API_URL = "https://refain-ai-dataset-cleaner.onrender.com/analyze/";
-  let lastCleanedCsv = '';
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+let lastCleanedCsv = '';
 
   function downloadCsv(csvText, filename) {
     if (!csvText) return;
@@ -1024,8 +1026,26 @@ const API_URL = "https://refain-ai-dataset-cleaner.onrender.com/analyze/";
 
 document.querySelector(".btn-paraphrase").addEventListener("click", async () => {
   const fileInput = document.querySelector("input[type='file']");
-    const inputArea = document.getElementById("input-area");
-    const text = inputArea ? inputArea.value : '';
+  const inputArea = document.getElementById("input-area");
+  const text = inputArea ? inputArea.value : '';
+
+  // Validate file size if uploading
+  if (fileInput && fileInput.files.length > 0) {
+    const file = fileInput.files[0];
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      alert(`File size exceeds ${MAX_FILE_SIZE_MB}MB limit. Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+      return;
+    }
+  }
+
+  // Validate text size if pasting
+  if (!fileInput || fileInput.files.length === 0) {
+    const textSizeBytes = new Blob([text]).size;
+    if (textSizeBytes > MAX_FILE_SIZE_BYTES) {
+      alert(`Text size exceeds ${MAX_FILE_SIZE_MB}MB limit. Current size: ${(textSizeBytes / 1024 / 1024).toFixed(2)}MB`);
+      return;
+    }
+  }
 
   const formData = new FormData();
 

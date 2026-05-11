@@ -22,6 +22,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+MAX_FILE_SIZE_MB = 10
+MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
 NUMERIC_COLUMN_HINTS = (
     "age", "year", "years", "count", "qty", "quantity", "price", "amount",
     "score", "rate", "id", "number", "num", "salary", "cost", "total"
@@ -212,6 +215,13 @@ async def analyze_file(file: UploadFile = File(None), text: str = Form(None)):
     if file:
         content = await file.read()
 
+        # Check file size
+        if len(content) > MAX_FILE_SIZE_BYTES:
+            return {
+                "error": f"File size exceeds {MAX_FILE_SIZE_MB}MB limit",
+                "file_size_mb": round(len(content) / 1024 / 1024, 2)
+            }
+
         if file.filename.endswith(".csv"):
             df = pd.read_csv(StringIO(content.decode("utf-8")))
         else:
@@ -220,6 +230,14 @@ async def analyze_file(file: UploadFile = File(None), text: str = Form(None)):
         return analyze_and_normalize(df)
 
     elif text:
+        # Check text size limit
+        text_size_bytes = len(text.encode('utf-8'))
+        if text_size_bytes > MAX_FILE_SIZE_BYTES:
+            return {
+                "error": f"Text size exceeds {MAX_FILE_SIZE_MB}MB limit",
+                "text_size_mb": round(text_size_bytes / 1024 / 1024, 2)
+            }
+        
         # When users paste text (CSV content) we return the fixed/cleaned text
         try:
             df = pd.read_csv(StringIO(text))

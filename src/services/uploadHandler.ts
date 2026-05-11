@@ -3,6 +3,8 @@
 
 const API_URL = 'https://refain.onrender.com/analyze/';
 const PREVIEW_LIMIT = 100; // maximum rows to render in the preview to avoid slow DOM rendering
+const MAX_FILE_SIZE_MB = 10; // maximum file size in MB
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 function parseCSV(text: string, maxRows = Infinity): string[][] {
   const lines = text.trim().split('\n');
@@ -513,6 +515,12 @@ export function initUploadHandler(): void {
 
     if (!file.name.endsWith('.csv')) {
       alert('Please upload a .csv file only.');
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      alert(`File size exceeds ${MAX_FILE_SIZE_MB}MB limit. Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+      fileInput.value = '';
       return;
     }
 
