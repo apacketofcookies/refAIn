@@ -336,59 +336,51 @@ function renderAnalysisResult(result: unknown): void {
   outputPlaceholder.innerHTML = '';
   outputPlaceholder.style.pointerEvents = 'auto';
 
+  const res: any = result as any;
+  const cleanedText = (res && (res.fixed_text || res.cleaned_csv)) ? String(res.fixed_text || res.cleaned_csv) : '';
+
   const pre = document.createElement('pre');
   pre.style.color = '#e8ecf4';
   pre.style.padding = '20px';
   pre.style.margin = '0';
   pre.style.whiteSpace = 'pre-wrap';
   pre.style.wordBreak = 'break-word';
-  pre.textContent = JSON.stringify(result, null, 2);
+  pre.textContent = cleanedText || JSON.stringify(result, null, 2);
   outputPlaceholder.appendChild(pre);
 
-  // If backend returned a cleaned CSV string or fixed_text, provide actions
-  // result may be an object with keys like fixed_text or cleaned_csv
-  const res: any = result as any;
   const actions = document.createElement('div');
   actions.style.display = 'flex';
   actions.style.gap = '8px';
   actions.style.padding = '10px 20px';
 
-  // Helper to create download button from CSV string
-  function makeDownloadButton(csvString: string, filename = 'cleaned.csv') {
+  function makeActionButton(label: string, onClick: () => void) {
     const btn = document.createElement('button');
     btn.className = 'csv-modal-action';
-    btn.textContent = 'Download cleaned CSV';
-    btn.addEventListener('click', () => {
-      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
+    btn.textContent = label;
+    btn.addEventListener('click', onClick);
     return btn;
   }
 
-  if (res && res.fixed_text) {
-    const replaceBtn = document.createElement('button');
-    replaceBtn.className = 'csv-modal-action';
-    replaceBtn.textContent = 'Replace Input with Cleaned Text';
-    replaceBtn.addEventListener('click', () => {
-      const inputEl = document.getElementById('input-area') as HTMLTextAreaElement | null;
-      if (!inputEl) return;
-      inputEl.value = res.fixed_text;
-      inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-    actions.appendChild(replaceBtn);
+  if (cleanedText) {
+    actions.appendChild(
+      makeActionButton('Copy cleaned text', () => {
+        void navigator.clipboard.writeText(cleanedText);
+      })
+    );
 
-    actions.appendChild(makeDownloadButton(res.fixed_text, 'cleaned.csv'));
-  }
-
-  if (res && res.cleaned_csv) {
-    actions.appendChild(makeDownloadButton(res.cleaned_csv, 'cleaned.csv'));
+    actions.appendChild(
+      makeActionButton('Download cleaned CSV', () => {
+        const blob = new Blob([cleanedText], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'cleaned.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      })
+    );
   }
 
   if (actions.children.length) outputPlaceholder.appendChild(actions);

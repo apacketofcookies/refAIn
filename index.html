@@ -1006,10 +1006,26 @@ const API_URL = "https://refain-ai-dataset-cleaner.onrender.com/analyze/";
     });
   }
 
+  const copyBtn = document.querySelector('button[title="Copy output"]');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      if (!lastCleanedCsv) {
+        alert('No cleaned text available yet. Analyze text or upload a file first.');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(lastCleanedCsv);
+      } catch (err) {
+        console.error('Copy failed:', err);
+        alert('Unable to copy text from browser clipboard.');
+      }
+    });
+  }
+
 document.querySelector(".btn-paraphrase").addEventListener("click", async () => {
   const fileInput = document.querySelector("input[type='file']");
-  const inputArea = document.getElementById("input-area");
-  const text = inputArea ? inputArea.value : '';
+    const inputArea = document.getElementById("input-area");
+    const text = inputArea ? inputArea.value : '';
 
   const formData = new FormData();
 
@@ -1033,46 +1049,51 @@ document.querySelector(".btn-paraphrase").addEventListener("click", async () => 
     out.innerHTML = '';
     out.style.pointerEvents = 'auto';
 
+    const cleanedText = data && (data.fixed_text || data.cleaned_csv)
+      ? String(data.fixed_text || data.cleaned_csv)
+      : '';
+
+    if (cleanedText) {
+      lastCleanedCsv = cleanedText;
+    }
+
     const pre = document.createElement('pre');
     pre.style.color = '#e8ecf4';
     pre.style.padding = '20px';
     pre.style.margin = '0';
     pre.style.whiteSpace = 'pre-wrap';
     pre.style.wordBreak = 'break-word';
-    pre.textContent = JSON.stringify(data, null, 2);
+    pre.textContent = cleanedText || JSON.stringify(data, null, 2);
     out.appendChild(pre);
 
-    // If backend returned fixed_text, replace textarea and provide download
-    if (data && data.fixed_text) {
-      lastCleanedCsv = data.fixed_text;
+    if (cleanedText) {
+      const actionWrap = document.createElement('div');
+      actionWrap.style.display = 'flex';
+      actionWrap.style.gap = '8px';
+      actionWrap.style.padding = '10px 20px';
 
-      if (inputArea) {
-        inputArea.value = data.fixed_text;
-        inputArea.dispatchEvent(new Event('input', { bubbles: true }));
-      }
+      const copyAction = document.createElement('button');
+      copyAction.className = 'btn-paraphrase';
+      copyAction.textContent = 'Copy cleaned text';
+      copyAction.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(cleanedText);
+        } catch (err) {
+          console.error('Copy failed:', err);
+          alert('Unable to copy text from browser clipboard.');
+        }
+      });
 
       const dl = document.createElement('button');
       dl.className = 'btn-paraphrase';
-      dl.style.marginTop = '8px';
       dl.textContent = 'Download cleaned CSV';
       dl.addEventListener('click', () => {
-        downloadCsv(data.fixed_text, 'cleaned.csv');
+        downloadCsv(cleanedText, 'cleaned.csv');
       });
-      out.appendChild(dl);
-    }
 
-    // If backend returned cleaned_csv for files, provide download
-    if (data && data.cleaned_csv) {
-      lastCleanedCsv = data.cleaned_csv;
-
-      const dl2 = document.createElement('button');
-      dl2.className = 'btn-paraphrase';
-      dl2.style.marginTop = '8px';
-      dl2.textContent = 'Download cleaned CSV';
-      dl2.addEventListener('click', () => {
-        downloadCsv(data.cleaned_csv, 'cleaned.csv');
-      });
-      out.appendChild(dl2);
+      actionWrap.appendChild(copyAction);
+      actionWrap.appendChild(dl);
+      out.appendChild(actionWrap);
     }
 
   } catch (err) {
