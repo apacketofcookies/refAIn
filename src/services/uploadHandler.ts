@@ -2,33 +2,39 @@
 // Handles CSV file upload, modal preview, and CSV analysis
 
 const API_URL = 'https://refain.onrender.com/analyze/';
+const PREVIEW_LIMIT = 100; // maximum rows to render in the preview to avoid slow DOM rendering
 
-function parseCSV(text: string): string[][] {
-  return text
-    .trim()
-    .split('\n')
-    .map(row => {
-      const cells: string[] = [];
-      let current = '';
-      let inQuotes = false;
+function parseCSV(text: string, maxRows = Infinity): string[][] {
+  const lines = text.trim().split('\n');
+  const rows: string[][] = [];
 
-      for (let i = 0; i < row.length; i++) {
-        const char = row[i];
-        if (char === '"') {
-          inQuotes = !inQuotes;
-        } else if (char === ',' && !inQuotes) {
-          cells.push(current.trim());
-          current = '';
-        } else {
-          current += char;
-        }
+  for (let r = 0; r < lines.length; r++) {
+    if (rows.length > maxRows) break;
+
+    const row = lines[r];
+    const cells: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < row.length; i++) {
+      const char = row[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        cells.push(current.trim());
+        current = '';
+      } else {
+        current += char;
       }
-      cells.push(current.trim());
-      return cells;
-    });
+    }
+    cells.push(current.trim());
+    rows.push(cells);
+  }
+
+  return rows;
 }
 
-function createModal(rows: string[][]): HTMLElement {
+function createModal(rows: string[][], totalRows?: number): HTMLElement {
   const overlay = document.createElement('div');
   overlay.id = 'csv-modal-overlay';
   overlay.innerHTML = `
@@ -39,7 +45,7 @@ function createModal(rows: string[][]): HTMLElement {
           <i data-lucide="table-2"></i>
           <span>CSV Preview</span>
         </div>
-        <div class="csv-modal-meta">${rows.length - 1} rows · ${rows[0]?.length ?? 0} columns</div>
+        <div class="csv-modal-meta">${Math.max(0, (totalRows ?? rows.length) - 1)} rows · ${rows[0]?.length ?? 0} columns${(totalRows ?? rows.length) > rows.length ? ' · Previewing first ' + (rows.length - 1) + ' rows' : ''}</div>
         <button class="csv-modal-close" id="csv-modal-close">
           <i data-lucide="x"></i>
         </button>
@@ -304,6 +310,25 @@ function closeModal(): void {
   if (overlay) overlay.remove();
 }
 
+function showParsingOverlay(): void {
+  if (document.getElementById('csv-parsing-overlay')) return;
+  const ov = document.createElement('div');
+  ov.id = 'csv-parsing-overlay';
+  ov.style.position = 'fixed';
+  ov.style.inset = '0';
+  ov.style.display = 'flex';
+  ov.style.alignItems = 'center';
+  ov.style.justifyContent = 'center';
+  ov.style.zIndex = '1001';
+  ov.innerHTML = `<div style="background:#13161e;padding:18px 22px;border-radius:12px;border:1px solid #2a2f3f;color:#e8ecf4;font-weight:600">Parsing CSV…</div>`;
+  document.body.appendChild(ov);
+}
+
+function hideParsingOverlay(): void {
+  const ov = document.getElementById('csv-parsing-overlay');
+  if (ov) ov.remove();
+}
+
 function renderAnalysisResult(result: unknown): void {
   const outputPlaceholder = document.querySelector('.output-placeholder');
   if (!outputPlaceholder) return;
@@ -350,13 +375,13 @@ async function analyzeCSVFile(file: File | null, rows: string[][]): Promise<void
   }
 }
 
-function showCSVModal(rows: string[][], filename: string, file: File | null): void {
+function showCSVModal(rows: string[][], filename: string, totalRows?: number, file: File | null = null): void {
   injectStyles();
 
   const existing = document.getElementById('csv-modal-overlay');
   if (existing) existing.remove();
 
-  const modal = createModal(rows);
+  const modal = createModal(rows, totalRows);
   document.body.appendChild(modal);
 
   // Set filename
@@ -413,14 +438,23 @@ export function initUploadHandler(): void {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      const rows = parseCSV(text);
+      const totalRows = text.trim() ? text.trim().split('\n').length : 0;
 
-      if (rows.length === 0) {
-        alert('The CSV file appears to be empty.');
-        return;
-      }
+      showParsingOverlay();
 
-      showCSVModal(rows, file.name, file);
+      // Let the spinner render before heavy parsing
+      setTimeout(() => {
+        const rows = parseCSV(text, PREVIEW_LIMIT + 1); // +1 for header
+
+        hideParsingOverlay();
+
+        if (rows.length === 0) {
+          alert('The CSV file appears to be empty.');
+          return;
+        }
+
+        showCSVModal(rows, file.name, totalRows, file);
+      }, 16);
     };
     reader.readAsText(file);
 
