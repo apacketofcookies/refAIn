@@ -417,7 +417,7 @@
       align-items: center;
       justify-content: center;
       gap: 12px;
-      pointer-events: none;
+      pointer-events: auto;
     }
 
     .output-placeholder-icon {
@@ -980,6 +980,31 @@
   </script>
   <script>
 const API_URL = "https://refain-ai-dataset-cleaner.onrender.com/analyze/";
+  let lastCleanedCsv = '';
+
+  function downloadCsv(csvText, filename) {
+    if (!csvText) return;
+    const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'cleaned.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  const downloadBtn = document.querySelector('button[title="Download"]');
+  if (downloadBtn) {
+    downloadBtn.addEventListener('click', () => {
+      if (!lastCleanedCsv) {
+        alert('No cleaned dataset available yet. Analyze text or upload a file first.');
+        return;
+      }
+      downloadCsv(lastCleanedCsv, 'cleaned.csv');
+    });
+  }
 
 document.querySelector(".btn-paraphrase").addEventListener("click", async () => {
   const fileInput = document.querySelector("input[type='file']");
@@ -1006,6 +1031,7 @@ document.querySelector(".btn-paraphrase").addEventListener("click", async () => 
     const out = document.querySelector('.output-placeholder');
     if (!out) return;
     out.innerHTML = '';
+    out.style.pointerEvents = 'auto';
 
     const pre = document.createElement('pre');
     pre.style.color = '#e8ecf4';
@@ -1018,6 +1044,8 @@ document.querySelector(".btn-paraphrase").addEventListener("click", async () => 
 
     // If backend returned fixed_text, replace textarea and provide download
     if (data && data.fixed_text) {
+      lastCleanedCsv = data.fixed_text;
+
       if (inputArea) {
         inputArea.value = data.fixed_text;
         inputArea.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1028,35 +1056,21 @@ document.querySelector(".btn-paraphrase").addEventListener("click", async () => 
       dl.style.marginTop = '8px';
       dl.textContent = 'Download cleaned CSV';
       dl.addEventListener('click', () => {
-        const blob = new Blob([data.fixed_text], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'cleaned.csv';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
+        downloadCsv(data.fixed_text, 'cleaned.csv');
       });
       out.appendChild(dl);
     }
 
     // If backend returned cleaned_csv for files, provide download
     if (data && data.cleaned_csv) {
+      lastCleanedCsv = data.cleaned_csv;
+
       const dl2 = document.createElement('button');
       dl2.className = 'btn-paraphrase';
       dl2.style.marginTop = '8px';
       dl2.textContent = 'Download cleaned CSV';
       dl2.addEventListener('click', () => {
-        const blob = new Blob([data.cleaned_csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'cleaned.csv';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
+        downloadCsv(data.cleaned_csv, 'cleaned.csv');
       });
       out.appendChild(dl2);
     }

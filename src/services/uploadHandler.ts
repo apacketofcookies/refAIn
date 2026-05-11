@@ -330,10 +330,11 @@ function hideParsingOverlay(): void {
 }
 
 function renderAnalysisResult(result: unknown): void {
-  const outputPlaceholder = document.querySelector('.output-placeholder');
+  const outputPlaceholder = document.querySelector('.output-placeholder') as HTMLElement | null;
   if (!outputPlaceholder) return;
 
   outputPlaceholder.innerHTML = '';
+  outputPlaceholder.style.pointerEvents = 'auto';
 
   const pre = document.createElement('pre');
   pre.style.color = '#e8ecf4';
