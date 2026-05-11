@@ -24,6 +24,7 @@ app.add_middleware(
 
 MAX_FILE_SIZE_MB = 10
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+MAX_ROWS = 50000  # Performance limit to avoid timeouts
 
 NUMERIC_COLUMN_HINTS = (
     "age", "year", "years", "count", "qty", "quantity", "price", "amount",
@@ -41,6 +42,10 @@ def detect_duplicates(df: pd.DataFrame) -> int:
 
 def detect_inconsistent_labels(df: pd.DataFrame) -> Dict[str, Any]:
     issues: Dict[str, Any] = {}
+    # Skip for large datasets to avoid timeout
+    if len(df) > MAX_ROWS:
+        return issues
+    
     for col in df.select_dtypes(include=["object"]).columns:
         values = df[col].dropna().astype(str).str.strip()
         values = values[values != ""]
@@ -109,7 +114,7 @@ def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
     missing_values = detect_missing(df)
     duplicate_rows = detect_duplicates(df)
     inconsistent_labels = detect_inconsistent_labels(df)
-    noise_detection = detect_noise(df) if len(df) < 10000 else {}
+    noise_detection = detect_noise(df) if len(df) < MAX_ROWS else {}
 
     cleaned = df.copy()
     row_counts = {
@@ -166,7 +171,7 @@ def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
     # 5) Drop outlier rows (noise) based on z-score > 3 for numeric columns.
     # Skip for large datasets to avoid timeout
     removed_noise_rows = 0
-    if len(cleaned) < 10000:
+    if len(cleaned) < MAX_ROWS:
         numeric_cols = [c for c in cleaned.columns if pd.api.types.is_numeric_dtype(cleaned[c])]
         noise_row_mask = pd.Series(False, index=cleaned.index)
         for col in numeric_cols:
@@ -227,6 +232,14 @@ async def analyze_file(file: UploadFile = File(None), text: str = Form(None)):
         else:
             df = pd.read_excel(BytesIO(content))
 
+        # Check row count limit
+        if len(df) > MAX_ROWS:
+            return {
+                "error": f"Dataset exceeds {MAX_ROWS:,} row limit",
+                "rows": len(df),
+                "details": f"Your file has {len(df):,} rows. Try splitting it into smaller files."
+            }
+
         return analyze_and_normalize(df)
 
     elif text:
@@ -243,6 +256,14 @@ async def analyze_file(file: UploadFile = File(None), text: str = Form(None)):
             df = pd.read_csv(StringIO(text))
         except Exception:
             return {"error": "Unable to parse text as CSV"}
+
+        # Check row count limit
+        if len(df) > MAX_ROWS:
+            return {
+                "error": f"Dataset exceeds {MAX_ROWS:,} row limit",
+                "rows": len(df),
+                "details": f"Your data has {len(df):,} rows. Try pasting a smaller dataset."
+            }
 
         return analyze_and_normalize(df)
 
