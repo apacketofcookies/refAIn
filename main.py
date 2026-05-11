@@ -24,7 +24,8 @@ app.add_middleware(
 
 MAX_FILE_SIZE_MB = 10
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
-MAX_ROWS = 50000  # Performance limit to avoid timeouts
+MAX_ROWS = 50000  # Hard limit for rejecting very large datasets
+MAX_FULL_ANALYSIS_ROWS = 5000  # Expensive checks are skipped above this size
 
 NUMERIC_COLUMN_HINTS = (
     "age", "year", "years", "count", "qty", "quantity", "price", "amount",
@@ -42,8 +43,8 @@ def detect_duplicates(df: pd.DataFrame) -> int:
 
 def detect_inconsistent_labels(df: pd.DataFrame) -> Dict[str, Any]:
     issues: Dict[str, Any] = {}
-    # Skip for large datasets to avoid timeout
-    if len(df) > MAX_ROWS:
+    # Skip for larger datasets to avoid timeout
+    if len(df) > MAX_FULL_ANALYSIS_ROWS:
         return issues
     
     for col in df.select_dtypes(include=["object"]).columns:
@@ -64,6 +65,9 @@ def detect_inconsistent_labels(df: pd.DataFrame) -> Dict[str, Any]:
 
 def detect_noise(df: pd.DataFrame) -> Dict[str, int]:
     noise_report: Dict[str, int] = {}
+    if len(df) > MAX_FULL_ANALYSIS_ROWS:
+        return noise_report
+
     for col in df.columns:
         numeric = pd.to_numeric(df[col], errors="coerce")
         valid = numeric.dropna()
@@ -113,8 +117,9 @@ def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
 
     missing_values = detect_missing(df)
     duplicate_rows = detect_duplicates(df)
-    inconsistent_labels = detect_inconsistent_labels(df)
-    noise_detection = detect_noise(df) if len(df) < MAX_ROWS else {}
+    use_full_analysis = len(df) <= MAX_FULL_ANALYSIS_ROWS
+    inconsistent_labels = detect_inconsistent_labels(df) if use_full_analysis else {}
+    noise_detection = detect_noise(df) if use_full_analysis else {}
 
     cleaned = df.copy()
     row_counts = {
@@ -145,15 +150,13 @@ def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
 
     for col in cleaned.columns:
         if cleaned[col].dtype == object or cleaned[col].dtype == "O":
-            uniques = cleaned[col].dropna().unique().tolist()
-            mapping: Dict[str, Any] = {}
-            for val in uniques:
-                mapping[str(val)] = normalize_text_value(val)
-
-            cleaned[col] = cleaned[col].map(lambda v: normalize_text_value(v))
-            changed = {k: v for k, v in mapping.items() if str(k) != str(v)}
-            if changed:
-                normalized_mappings[col] = changed
+            cleaned[col] = cleaned[col].map(normalize_text_value)
+            if use_full_analysis:
+                uniques = df[col].dropna().unique().tolist()
+                mapping: Dict[str, Any] = {str(val): normalize_text_value(val) for val in uniques}
+                changed = {k: v for k, v in mapping.items() if str(k) != str(v)}
+                if changed:
+                    normalized_mappings[col] = changed
 
         if is_numeric_expected_column(original_df, col):
             numeric_expected_columns.append(col)
@@ -171,7 +174,7 @@ def analyze_and_normalize(df: pd.DataFrame) -> Dict[str, Any]:
     # 5) Drop outlier rows (noise) based on z-score > 3 for numeric columns.
     # Skip for large datasets to avoid timeout
     removed_noise_rows = 0
-    if len(cleaned) < MAX_ROWS:
+    if len(cleaned) <= MAX_FULL_ANALYSIS_ROWS:
         numeric_cols = [c for c in cleaned.columns if pd.api.types.is_numeric_dtype(cleaned[c])]
         noise_row_mask = pd.Series(False, index=cleaned.index)
         for col in numeric_cols:
