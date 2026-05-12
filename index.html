@@ -1,15 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ParaPhrase — AI Paraphrasing Tool</title>
+  <title>RefAIn</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap"
+    rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <style>
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
@@ -35,7 +40,8 @@
       --radius-lg: 16px;
     }
 
-    html, body {
+    html,
+    body {
       height: 100%;
     }
 
@@ -254,69 +260,6 @@
       width: 100%;
     }
 
-    /* ─── MODE SELECTOR ─── */
-    .modes-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .modes-label {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-right: 4px;
-    }
-
-    .mode-btn {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 14px;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text-secondary);
-      font-family: 'Sora', sans-serif;
-      font-size: 12.5px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
-      user-select: none;
-    }
-
-    .mode-btn:hover {
-      border-color: var(--border-light);
-      color: var(--text-primary);
-      background: var(--surface-2);
-    }
-
-    .mode-btn.active {
-      border-color: var(--accent);
-      background: var(--accent-glow);
-      color: var(--accent);
-    }
-
-    .mode-btn .mode-icon {
-      font-size: 11px;
-      opacity: 0.8;
-    }
-
-    .mode-btn.pro-locked {
-      opacity: 0.55;
-      position: relative;
-    }
-
-    .mode-btn.pro-locked::after {
-      content: '✦';
-      font-size: 9px;
-      color: #f59e0b;
-      margin-left: 2px;
-    }
-
     /* ─── EDITOR AREA ─── */
     .editor-container {
       display: grid;
@@ -331,8 +274,15 @@
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .editor-pane {
@@ -434,12 +384,13 @@
     }
 
     .output-placeholder-text {
+      width: 100%;
+      height: 100%;
+      padding: 22px 24px;
       font-size: 13.5px;
       color: var(--text-muted);
       font-weight: 400;
-      text-align: center;
       line-height: 1.6;
-      max-width: 220px;
     }
 
     .editor-pane-footer {
@@ -520,27 +471,6 @@
       gap: 24px;
     }
 
-    .strength-control {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .strength-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-muted);
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-
-    .strength-slider-wrap {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
     input[type="range"] {
       -webkit-appearance: none;
       appearance: none;
@@ -567,14 +497,6 @@
 
     input[type="range"]::-webkit-slider-thumb:hover {
       transform: scale(1.2);
-    }
-
-    .strength-value {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--accent);
-      min-width: 100px;
-      font-family: 'DM Mono', monospace;
     }
 
     .synonym-toggle {
@@ -622,12 +544,12 @@
       transition: all 0.2s;
     }
 
-    .toggle-switch input:checked + .toggle-slider {
+    .toggle-switch input:checked+.toggle-slider {
       background: var(--accent-glow);
       border-color: var(--accent);
     }
 
-    .toggle-switch input:checked + .toggle-slider::before {
+    .toggle-switch input:checked+.toggle-slider::before {
       transform: translateX(16px);
       background: var(--accent);
     }
@@ -675,10 +597,10 @@
     }
 
     /* FILES TAB --- */
-    .files-tab-container{
+    .files-tab-container {
       display: grid;
       grid-template-columns: 1fr auto 1fr;
-      gap:0;
+      gap: 0;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
@@ -722,36 +644,67 @@
       box-shadow: 0 0 6px var(--accent);
     }
 
-    
+
 
     /* ─── SCROLLBAR ─── */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--surface-3);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--border-light);
+    }
 
     /* ─── RESPONSIVE ─── */
     @media (max-width: 768px) {
-      header { padding: 0 16px; }
-      .nav { display: none; }
-      main { padding: 16px; gap: 14px; }
+      header {
+        padding: 0 16px;
+      }
+
+      .nav {
+        display: none;
+      }
+
+      main {
+        padding: 16px;
+        gap: 14px;
+      }
+
       .editor-container {
         grid-template-columns: 1fr;
         grid-template-rows: auto auto auto;
       }
+
       .editor-divider {
         width: auto;
         height: 1px;
         flex-direction: row;
       }
+
       .paraphrase-btn {
         position: relative;
         transform: rotate(90deg);
       }
-      .toolbar { flex-direction: column; gap: 14px; align-items: flex-start; }
+
+      .toolbar {
+        flex-direction: column;
+        gap: 14px;
+        align-items: flex-start;
+      }
     }
   </style>
 </head>
+
 <body>
 
   <!-- ─── HEADER ─── -->
@@ -778,36 +731,6 @@
   <!-- ─── MAIN ─── -->
   <main>
 
-    <!-- Mode Selector -->
-    <div class="modes-bar">
-      <span class="modes-label">Mode</span>
-
-      <button class="mode-btn active" data-mode="standard">
-        <span class="mode-icon">✦</span> Standard
-      </button>
-      <button class="mode-btn" data-mode="fluency">
-        <span class="mode-icon">◈</span> Fluency
-      </button>
-      <button class="mode-btn" data-mode="formal">
-        <span class="mode-icon">◆</span> Formal
-      </button>
-      <button class="mode-btn" data-mode="academic">
-        <span class="mode-icon">◉</span> Academic
-      </button>
-      <button class="mode-btn" data-mode="simple">
-        <span class="mode-icon">○</span> Simple
-      </button>
-      <button class="mode-btn pro-locked" data-mode="creative">
-        <span class="mode-icon">✳</span> Creative
-      </button>
-      <button class="mode-btn pro-locked" data-mode="expand">
-        <span class="mode-icon">⊕</span> Expand
-      </button>
-      <button class="mode-btn pro-locked" data-mode="shorten">
-        <span class="mode-icon">⊖</span> Shorten
-      </button>
-    </div>
-
     <!-- Editor -->
     <div class="editor-container">
 
@@ -829,11 +752,8 @@
           </div>
         </div>
         <div class="editor-pane-body">
-          <textarea
-            id="input-area"
-            placeholder="Enter or paste your text here to paraphrase it..."
-            spellcheck="false"
-          ></textarea>
+          <textarea id="input-area" placeholder="Enter or paste your text here to paraphrase it..."
+            spellcheck="false"></textarea>
         </div>
         <div class="editor-pane-footer">
           <span class="word-count" id="word-count">0 / 1,000</span>
@@ -862,18 +782,12 @@
             <button class="icon-btn" title="Download">
               <i data-lucide="file-down"></i>
             </button>
-            <button class="icon-btn" title="Synonym highlighter">
-              ✦
-            </button>
           </div>
         </div>
         <div class="editor-pane-body">
-          <div class="output-placeholder">
-            <div class="output-placeholder-icon">✦</div>
-            <p class="output-placeholder-text">
+          <p class="output-placeholder-text">
               Your paraphrased text will appear here
-            </p>
-          </div>
+          </p>
         </div>
         <div class="editor-pane-footer">
           <span class="word-count">— / —</span>
@@ -895,27 +809,11 @@
     <div class="toolbar">
       <div class="toolbar-left">
 
-        <div class="strength-control">
-          <span class="strength-label">Strength</span>
-          <div class="strength-slider-wrap">
-            <input type="range" id="strength-slider" min="0" max="2" value="1" step="1" />
-            <span class="strength-value" id="strength-value">Balanced</span>
-          </div>
-        </div>
-
-        <label class="synonym-toggle">
-          <span class="toggle-switch">
-            <input type="checkbox" checked />
-            <span class="toggle-slider"></span>
-          </span>
-          Synonym Highlighter
-        </label>
-
       </div>
       <div class="toolbar-right">
         <span class="shortcut-hint">⌘ + Enter</span>
         <button class="btn-paraphrase">
-          <span>⟳</span> Paraphrase
+          <span>⟳</span> Clean data
         </button>
       </div>
     </div>
@@ -932,16 +830,6 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', function () {
-
-      // Mode buttons
-      document.querySelectorAll('.mode-btn').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          document.querySelectorAll('.mode-btn').forEach(function (b) {
-            b.classList.remove('active');
-          });
-          btn.classList.add('active');
-        });
-      });
 
       // Word count
       var inputEl = document.getElementById('input-area');
@@ -963,166 +851,157 @@
         });
       }
 
-      // Strength slider
-      var slider = document.getElementById('strength-slider');
-      var strengthLabel = document.getElementById('strength-value');
-      if (slider && strengthLabel) {
-        var labels = ['Fewer Changes', 'Balanced', 'More Changes'];
-        slider.addEventListener('input', function () {
-          strengthLabel.textContent = labels[parseInt(slider.value)];
-        });
-      }
-
     });
 
     // Create lucide icons
     lucide.createIcons();
   </script>
   <script>
-const API_URL = "https://refain-ai-dataset-cleaner.onrender.com/analyze/";
-const MAX_FILE_SIZE_MB = 10;
-const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
-let lastCleanedCsv = '';
+    const API_URL = "https://refain-ai-dataset-cleaner.onrender.com/analyze/";
+    const MAX_FILE_SIZE_MB = 10;
+    const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+    let lastCleanedCsv = '';
 
-  function downloadCsv(csvText, filename) {
-    if (!csvText) return;
-    const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename || 'cleaned.csv';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  const downloadBtn = document.querySelector('button[title="Download"]');
-  if (downloadBtn) {
-    downloadBtn.addEventListener('click', () => {
-      if (!lastCleanedCsv) {
-        alert('No cleaned dataset available yet. Analyze text or upload a file first.');
-        return;
-      }
-      downloadCsv(lastCleanedCsv, 'cleaned.csv');
-    });
-  }
-
-  const copyBtn = document.querySelector('button[title="Copy output"]');
-  if (copyBtn) {
-    copyBtn.addEventListener('click', async () => {
-      if (!lastCleanedCsv) {
-        alert('No cleaned text available yet. Analyze text or upload a file first.');
-        return;
-      }
-      try {
-        await navigator.clipboard.writeText(lastCleanedCsv);
-      } catch (err) {
-        console.error('Copy failed:', err);
-        alert('Unable to copy text from browser clipboard.');
-      }
-    });
-  }
-
-document.querySelector(".btn-paraphrase").addEventListener("click", async () => {
-  const fileInput = document.querySelector("input[type='file']");
-  const inputArea = document.getElementById("input-area");
-  const text = inputArea ? inputArea.value : '';
-
-  // Validate file size if uploading
-  if (fileInput && fileInput.files.length > 0) {
-    const file = fileInput.files[0];
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      alert(`File size exceeds ${MAX_FILE_SIZE_MB}MB limit. Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
-      return;
-    }
-  }
-
-  // Validate text size if pasting
-  if (!fileInput || fileInput.files.length === 0) {
-    const textSizeBytes = new Blob([text]).size;
-    if (textSizeBytes > MAX_FILE_SIZE_BYTES) {
-      alert(`Text size exceeds ${MAX_FILE_SIZE_MB}MB limit. Current size: ${(textSizeBytes / 1024 / 1024).toFixed(2)}MB`);
-      return;
-    }
-  }
-
-  const formData = new FormData();
-
-  if (fileInput && fileInput.files.length > 0) {
-    formData.append("file", fileInput.files[0]);
-  } else {
-    formData.append("text", text);
-  }
-
-  try {
-    const response = await fetch(API_URL, {
-      method: "POST",
-      body: formData
-    });
-
-    const data = await response.json();
-    console.log("Backend result:", data);
-
-    const out = document.querySelector('.output-placeholder');
-    if (!out) return;
-    out.innerHTML = '';
-    out.style.pointerEvents = 'auto';
-
-    const cleanedText = data && (data.fixed_text || data.cleaned_csv)
-      ? String(data.fixed_text || data.cleaned_csv)
-      : '';
-
-    if (cleanedText) {
-      lastCleanedCsv = cleanedText;
+    function downloadCsv(csvText, filename) {
+      if (!csvText) return;
+      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || 'cleaned.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
     }
 
-    const pre = document.createElement('pre');
-    pre.style.color = '#e8ecf4';
-    pre.style.padding = '20px';
-    pre.style.margin = '0';
-    pre.style.whiteSpace = 'pre-wrap';
-    pre.style.wordBreak = 'break-word';
-    pre.textContent = cleanedText || JSON.stringify(data, null, 2);
-    out.appendChild(pre);
+    const downloadBtn = document.querySelector('button[title="Download"]');
+    if (downloadBtn) {
+      downloadBtn.addEventListener('click', () => {
+        if (!lastCleanedCsv) {
+          alert('No cleaned dataset available yet. Analyze text or upload a file first.');
+          return;
+        }
+        downloadCsv(lastCleanedCsv, 'cleaned.csv');
+      });
+    }
 
-    if (cleanedText) {
-      const actionWrap = document.createElement('div');
-      actionWrap.style.display = 'flex';
-      actionWrap.style.gap = '8px';
-      actionWrap.style.padding = '10px 20px';
-
-      const copyAction = document.createElement('button');
-      copyAction.className = 'btn-paraphrase';
-      copyAction.textContent = 'Copy cleaned text';
-      copyAction.addEventListener('click', async () => {
+    const copyBtn = document.querySelector('button[title="Copy output"]');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async () => {
+        if (!lastCleanedCsv) {
+          alert('No cleaned text available yet. Analyze text or upload a file first.');
+          return;
+        }
         try {
-          await navigator.clipboard.writeText(cleanedText);
+          await navigator.clipboard.writeText(lastCleanedCsv);
         } catch (err) {
           console.error('Copy failed:', err);
           alert('Unable to copy text from browser clipboard.');
         }
       });
-
-      const dl = document.createElement('button');
-      dl.className = 'btn-paraphrase';
-      dl.textContent = 'Download cleaned CSV';
-      dl.addEventListener('click', () => {
-        downloadCsv(cleanedText, 'cleaned.csv');
-      });
-
-      actionWrap.appendChild(copyAction);
-      actionWrap.appendChild(dl);
-      out.appendChild(actionWrap);
     }
 
-  } catch (err) {
-    console.error("Error:", err);
-    document.querySelector(".output-placeholder").innerHTML =
-      "<p style='color:red;'>Backend error. Check console.</p>";
-  }
-});
-</script>
+    document.querySelector(".btn-paraphrase").addEventListener("click", async () => {
+      const fileInput = document.querySelector("input[type='file']");
+      const inputArea = document.getElementById("input-area");
+      const text = inputArea ? inputArea.value : '';
+
+      // Validate file size if uploading
+      if (fileInput && fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+          alert(`File size exceeds ${MAX_FILE_SIZE_MB}MB limit. Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+          return;
+        }
+      }
+
+      // Validate text size if pasting
+      if (!fileInput || fileInput.files.length === 0) {
+        const textSizeBytes = new Blob([text]).size;
+        if (textSizeBytes > MAX_FILE_SIZE_BYTES) {
+          alert(`Text size exceeds ${MAX_FILE_SIZE_MB}MB limit. Current size: ${(textSizeBytes / 1024 / 1024).toFixed(2)}MB`);
+          return;
+        }
+      }
+
+      const formData = new FormData();
+
+      if (fileInput && fileInput.files.length > 0) {
+        formData.append("file", fileInput.files[0]);
+      } else {
+        formData.append("text", text);
+      }
+
+      try {
+        const response = await fetch(API_URL, {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await response.json();
+        console.log("Backend result:", data);
+
+        const out = document.querySelector('.output-placeholder');
+        if (!out) return;
+        out.innerHTML = '';
+        out.style.pointerEvents = 'auto';
+
+        const cleanedText = data && (data.fixed_text || data.cleaned_csv)
+          ? String(data.fixed_text || data.cleaned_csv)
+          : '';
+
+        if (cleanedText) {
+          lastCleanedCsv = cleanedText;
+        }
+
+        const pre = document.createElement('pre');
+        pre.style.color = '#e8ecf4';
+        pre.style.padding = '20px';
+        pre.style.margin = '0';
+        pre.style.whiteSpace = 'pre-wrap';
+        pre.style.wordBreak = 'break-word';
+        pre.textContent = cleanedText || JSON.stringify(data, null, 2);
+        out.appendChild(pre);
+
+        if (cleanedText) {
+          const actionWrap = document.createElement('div');
+          actionWrap.style.display = 'flex';
+          actionWrap.style.gap = '8px';
+          actionWrap.style.padding = '10px 20px';
+
+          const copyAction = document.createElement('button');
+          copyAction.className = 'btn-paraphrase';
+          copyAction.textContent = 'Copy cleaned text';
+          copyAction.addEventListener('click', async () => {
+            try {
+              await navigator.clipboard.writeText(cleanedText);
+            } catch (err) {
+              console.error('Copy failed:', err);
+              alert('Unable to copy text from browser clipboard.');
+            }
+          });
+
+          const dl = document.createElement('button');
+          dl.className = 'btn-paraphrase';
+          dl.textContent = 'Download cleaned CSV';
+          dl.addEventListener('click', () => {
+            downloadCsv(cleanedText, 'cleaned.csv');
+          });
+
+          actionWrap.appendChild(copyAction);
+          actionWrap.appendChild(dl);
+          out.appendChild(actionWrap);
+        }
+
+      } catch (err) {
+        console.error("Error:", err);
+        document.querySelector(".output-placeholder").innerHTML =
+          "<p style='color:red;'>Backend error. Check console.</p>";
+      }
+    });
+  </script>
   <script type="module" src="/src/main.ts"></script>
 </body>
+
 </html>
